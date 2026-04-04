@@ -62,28 +62,62 @@ module.exports.getAutoCompleteSuggestions = async (input) => {
 
     try {
         const response = await axios.get(url);
+        console.log('Google Maps API Response Status:', response.data.status);
+        console.log('Google Maps API Response:', response.data);
+
         if (response.data.status === 'OK') {
             return response.data.predictions.map(prediction => prediction.description).filter(value => value);
         } else {
-            throw new Error('Unable to fetch suggestions');
+            throw new Error(`Google Maps API Error: ${response.data.status} - ${response.data.error_message || 'Unknown error'}`);
         }
     } catch (err) {
-        console.error(err);
+        console.error('Maps API Error:', err.message);
         throw err;
     }
 }
 
-module.exports.getCaptainsInTheRadius = async (ltd, lng, radius) => {
+module.exports.getCaptainsInTheRadius = async (ltd, lng, radius, vehicleType) => {
 
     // radius in km
 
+    let vehicleTypeFilter = {};
+
+    // Build filter based on requested vehicle type
+    switch(vehicleType) {
+        case 'autoCarpool':
+            vehicleTypeFilter = { 'vehicle.vehicleType': 'autoCarpool' };
+            break;
+        case 'carCarpool':
+            vehicleTypeFilter = { 'vehicle.vehicleType': 'carCarpool' };
+            break;
+        case 'auto':
+            vehicleTypeFilter = { 'vehicle.vehicleType': { $in: ['auto', 'autoCarpool'] } };
+            break;
+        case 'car':
+            vehicleTypeFilter = { 'vehicle.vehicleType': { $in: ['car', 'carCarpool'] } };
+            break;
+        case 'motorcycle':
+            vehicleTypeFilter = { 'vehicle.vehicleType': 'motorcycle' };
+            break;
+        case 'moto':
+            vehicleTypeFilter = { 'vehicle.vehicleType': 'motorcycle' };
+            break;
+        default:
+            // If vehicleType is not recognized, don't filter (send to all)
+            vehicleTypeFilter = {};
+    }
 
     const captains = await captainModel.find({
         location: {
-            $geoWithin: {
-                $centerSphere: [ [ ltd, lng ], radius / 6371 ]
+            $near: {
+                $geometry: {
+                    type: 'Point',
+                    coordinates: [lng, ltd]  // [longitude, latitude]
+                },
+                $maxDistance: radius * 1000  // Convert km to meters
             }
-        }
+        },
+        ...vehicleTypeFilter
     });
 
     return captains;

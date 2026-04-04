@@ -14,19 +14,25 @@ async function getFare(pickup, destination) {
     const baseFare = {
         auto: 30,
         car: 50,
-        moto: 20
+        moto: 20,
+        autoCarpool: 20,  // Lower base fare for carpooling
+        carCarpool: 35    // Lower base fare for carpooling
     };
 
     const perKmRate = {
         auto: 10,
         car: 15,
-        moto: 8
+        moto: 8,
+        autoCarpool: 6,   // Lower per km rate for carpooling
+        carCarpool: 9     // Lower per km rate for carpooling
     };
 
     const perMinuteRate = {
         auto: 2,
         car: 3,
-        moto: 1.5
+        moto: 1.5,
+        autoCarpool: 1.2, // Lower per minute rate for carpooling
+        carCarpool: 1.8   // Lower per minute rate for carpooling
     };
 
 
@@ -34,7 +40,9 @@ async function getFare(pickup, destination) {
     const fare = {
         auto: Math.round(baseFare.auto + ((distanceTime.distance.value / 1000) * perKmRate.auto) + ((distanceTime.duration.value / 60) * perMinuteRate.auto)),
         car: Math.round(baseFare.car + ((distanceTime.distance.value / 1000) * perKmRate.car) + ((distanceTime.duration.value / 60) * perMinuteRate.car)),
-        moto: Math.round(baseFare.moto + ((distanceTime.distance.value / 1000) * perKmRate.moto) + ((distanceTime.duration.value / 60) * perMinuteRate.moto))
+        moto: Math.round(baseFare.moto + ((distanceTime.distance.value / 1000) * perKmRate.moto) + ((distanceTime.duration.value / 60) * perMinuteRate.moto)),
+        autoCarpool: Math.round(baseFare.autoCarpool + ((distanceTime.distance.value / 1000) * perKmRate.autoCarpool) + ((distanceTime.duration.value / 60) * perMinuteRate.autoCarpool)),
+        carCarpool: Math.round(baseFare.carCarpool + ((distanceTime.distance.value / 1000) * perKmRate.carCarpool) + ((distanceTime.duration.value / 60) * perMinuteRate.carCarpool))
     };
 
     return fare;

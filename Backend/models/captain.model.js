@@ -55,19 +55,25 @@ const captainSchema = new mongoose.Schema({
         vehicleType: {
             type: String,
             required: true,
-            enum: [ 'car', 'motorcycle', 'auto' ],
+            enum: [ 'car', 'motorcycle', 'auto', 'carCarpool', 'autoCarpool' ],
         }
     },
 
     location: {
-        ltd: {
-            type: Number,
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
         },
-        lng: {
-            type: Number,
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: [0, 0]
         }
     }
 })
+
+// Create geospatial index for location
+captainSchema.index({ location: '2dsphere' });
 
 
 captainSchema.methods.generateAuthToken = function () {

@@ -36,10 +36,12 @@ function initializeSocket(server) {
 
             await captainModel.findByIdAndUpdate(userId, {
                 location: {
-                    ltd: location.ltd,
-                    lng: location.lng
+                    type: 'Point',
+                    coordinates: [location.lng, location.ltd]  // [longitude, latitude]
                 }
             });
+
+            console.log(`Captain ${userId} location updated: [${location.lng}, ${location.ltd}]`);
         });
 
         socket.on('disconnect', () => {
