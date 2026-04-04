@@ -24,8 +24,6 @@ module.exports.createRide = async (req, res) => {
 
         console.log(`Found ${captainsInRadius.length} captains for vehicleType: ${vehicleType}`);
 
-        ride.otp = ""
-
         const rideWithUser = await rideModel.findOne({ _id: ride._id }).populate('user');
 
         captainsInRadius.map(captain => {

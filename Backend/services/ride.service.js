@@ -73,7 +73,7 @@ module.exports.createRide = async ({
 
 
 
-    const ride = rideModel.create({
+    const ride = await rideModel.create({
         user,
         pickup,
         destination,
@@ -89,6 +89,10 @@ module.exports.confirmRide = async ({
 }) => {
     if (!rideId) {
         throw new Error('Ride id is required');
+    }
+
+    if (!captain) {
+        throw new Error('Captain not authenticated');
     }
 
     await rideModel.findOneAndUpdate({
@@ -143,6 +147,10 @@ module.exports.startRide = async ({ rideId, otp, captain }) => {
 module.exports.endRide = async ({ rideId, captain }) => {
     if (!rideId) {
         throw new Error('Ride id is required');
+    }
+
+    if (!captain) {
+        throw new Error('Captain not authenticated');
     }
 
     const ride = await rideModel.findOne({
