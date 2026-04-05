@@ -262,11 +262,16 @@ module.exports.confirmRide = async ({
 
     // Find and update the specific passenger status
     if (passengerId) {
-        const passenger = ride.passengers.find(p => p.user.toString() === passengerId);
-        console.log('Found passenger:', passenger ? passenger._id : 'not found', 'for userId:', passengerId);
+        console.log('confirmRide: passengerId received:', passengerId);
+        console.log('confirmRide: passengers before update:', ride.passengers.map(p => ({ id: p._id.toString(), user: p.user, status: p.status })));
+        const passenger = ride.passengers.find(p => {
+            const userId = p.user && p.user._id ? p.user._id.toString() : p.user?.toString?.();
+            return userId === passengerId;
+        });
+        console.log('confirmRide: passenger lookup result:', passenger ? { id: passenger._id.toString(), status: passenger.status, user: passenger.user } : 'not found');
         if (passenger) {
             passenger.status = ride.status === 'ongoing' ? 'ongoing' : 'accepted';
-            console.log('Set passenger status to:', passenger.status);
+            console.log('confirmRide: set passenger status to:', passenger.status);
         }
     } else {
         // If no specific passenger, accept all pending passengers

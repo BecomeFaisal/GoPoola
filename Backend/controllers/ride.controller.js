@@ -104,13 +104,19 @@ module.exports.acceptPassenger = async (req, res) => {
     }
 
     const { rideId, passengerId } = req.body;
+    console.log('acceptPassenger: rideId:', rideId, 'passengerId:', passengerId, 'captainId:', req.captain?._id?.toString());
 
     try {
         const ride = await rideService.confirmRide({ rideId, captain: req.captain, passengerId });
+        console.log('acceptPassenger: returned ride status:', ride.status);
+        console.log('acceptPassenger: returned passengers:', ride.passengers.map(p => ({ id: p._id.toString(), user: p.user, status: p.status })));
 
         // Send confirmation to the specific passenger
-        const passenger = ride.passengers.find(p => p.user.toString() === passengerId);
-        console.log('Controller: passenger found:', passenger ? passenger.status : 'not found');
+        const passenger = ride.passengers.find(p => {
+            const userId = p.user && p.user._id ? p.user._id.toString() : p.user?.toString?.();
+            return userId === passengerId;
+        });
+        console.log('Controller: passenger lookup result:', passenger ? { id: passenger._id.toString(), status: passenger.status, user: passenger.user } : 'not found');
         if (passenger && ['accepted', 'ongoing'].includes(passenger.status)) {
             // Send appropriate event based on ride status
             const eventName = ride.status === 'ongoing' ? 'ride-started' : 'ride-confirmed';
