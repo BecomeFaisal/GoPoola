@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import CaptainDetails from '../components/CaptainDetails'
 import RidePopUp from '../components/RidePopUp'
 import { useGSAP } from '@gsap/react'
@@ -9,6 +9,7 @@ import { useEffect, useContext } from 'react'
 import { SocketContext } from '../context/SocketContext'
 import { CaptainDataContext } from '../context/CapatainContext'
 import axios from 'axios'
+import LiveTracking from '../components/LiveTracking'
 
 const CaptainHome = () => {
 
@@ -23,6 +24,8 @@ const CaptainHome = () => {
 
     const { socket } = useContext(SocketContext)
     const { captain } = useContext(CaptainDataContext)
+
+    const navigate = useNavigate()
 
     // Helper function to decode JWT without external library
     const decodeToken = (token) => {
@@ -182,17 +185,38 @@ const CaptainHome = () => {
         }
     }, [ confirmRidePopupPanel ])
 
+    const handleLogout = async () => {
+        const authToken = localStorage.getItem('captainToken') || localStorage.getItem('token')
+        try {
+            const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/captains/logout`, {
+                headers: {
+                    Authorization: `Bearer ${authToken}`
+                }
+            });
+            if (response.status === 200) {
+                localStorage.removeItem('captainToken');
+                localStorage.removeItem('token');
+                navigate('/captain-login');
+            }
+        } catch (error) {
+            console.error('Logout failed:', error);
+            // Still remove token and navigate
+            localStorage.removeItem('captainToken');
+            localStorage.removeItem('token');
+            navigate('/captain-login');
+        }
+    }
+
     return (
         <div className='h-screen'>
-            <div className='fixed p-6 top-0 flex items-center justify-between w-screen'>
-                <img className='w-16' src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png" alt="" />
-                <Link to='/captain-home' className=' h-10 w-10 bg-white flex items-center justify-center rounded-full'>
-                    <i className="text-lg font-medium ri-logout-box-r-line"></i>
-                </Link>
-            </div>
+            <button
+                onClick={handleLogout}
+                className='fixed top-4 right-4 z-50 bg-white border border-gray-200 shadow-sm text-black px-4 py-2 rounded-full hover:bg-gray-100'
+            >
+                Logout
+            </button>
             <div className='h-3/5'>
-                <img className='h-full w-full object-cover' src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif" alt="" />
-
+                <LiveTracking />
             </div>
             <div className='h-2/5 p-6'>
                 <CaptainDetails />

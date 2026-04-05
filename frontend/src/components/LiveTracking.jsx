@@ -15,23 +15,41 @@ const LiveTracking = () => {
     const [ currentPosition, setCurrentPosition ] = useState(center);
 
     useEffect(() => {
-        navigator.geolocation.getCurrentPosition((position) => {
-            const { latitude, longitude } = position.coords;
-            setCurrentPosition({
-                lat: latitude,
-                lng: longitude
-            });
-        });
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    console.log('Location obtained:', latitude, longitude);
+                    setCurrentPosition({
+                        lat: latitude,
+                        lng: longitude
+                    });
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    // Keep default position or handle error
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+            );
 
-        const watchId = navigator.geolocation.watchPosition((position) => {
-            const { latitude, longitude } = position.coords;
-            setCurrentPosition({
-                lat: latitude,
-                lng: longitude
-            });
-        });
+            const watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    console.log('Location updated:', latitude, longitude);
+                    setCurrentPosition({
+                        lat: latitude,
+                        lng: longitude
+                    });
+                },
+                (error) => {
+                    console.error('Error watching location:', error);
+                }
+            );
 
-        return () => navigator.geolocation.clearWatch(watchId);
+            return () => navigator.geolocation.clearWatch(watchId);
+        } else {
+            console.error('Geolocation is not supported by this browser.');
+        }
     }, []);
 
     useEffect(() => {
@@ -59,6 +77,10 @@ const LiveTracking = () => {
                 mapContainerStyle={containerStyle}
                 center={currentPosition}
                 zoom={15}
+                options={{
+                    mapTypeControl: false,
+                    fullscreenControl: false,
+                }}
             >
                 <Marker position={currentPosition} />
             </GoogleMap>

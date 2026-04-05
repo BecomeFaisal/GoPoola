@@ -8,11 +8,11 @@ import VehiclePanel from '../components/VehiclePanel';
 import ConfirmRide from '../components/ConfirmRide';
 import LookingForDriver from '../components/LookingForDriver';
 import WaitingForDriver from '../components/WaitingForDriver';
+import LiveTracking from '../components/LiveTracking';
 import { SocketContext } from '../context/SocketContext';
 import { useContext } from 'react';
 import { UserDataContext } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
-import LiveTracking from '../components/LiveTracking';
 
 const Home = () => {
     const [ pickup, setPickup ] = useState('')
@@ -269,11 +269,35 @@ const Home = () => {
         setCarpoolRequests(prev => prev.filter(req => req.id !== requestId))
     }
 
+    const handleLogout = async () => {
+        try {
+            const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/users/logout`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            if (response.status === 200) {
+                localStorage.removeItem('token');
+                navigate('/login');
+            }
+        } catch (error) {
+            console.error('Logout failed:', error);
+            // Still remove token and navigate
+            localStorage.removeItem('token');
+            navigate('/login');
+        }
+    }
+
     return (
         <div className='h-screen relative overflow-hidden'>
-            <img className='w-16 absolute left-5 top-5' src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png" alt="" />
+            <img className='w-16 absolute left-5 top-5' src="/Logo.png" alt="GoPoola Logo" />
+            <button
+                onClick={handleLogout}
+                className='absolute right-5 top-5 h-10 w-10 bg-white flex items-center justify-center rounded-full shadow-lg z-50'
+            >
+                <i className="text-lg ri-logout-box-r-line"></i>
+            </button>
             <div className='h-screen w-screen'>
-                {/* image for temporary use  */}
                 <LiveTracking />
             </div>
             <div className=' flex flex-col justify-end h-screen absolute top-0 w-full'>

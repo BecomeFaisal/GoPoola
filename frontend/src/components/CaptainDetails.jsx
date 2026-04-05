@@ -12,29 +12,36 @@ const CaptainDetails = () => {
                 <div className='flex items-center justify-start gap-3'>
                     <img className='h-10 w-10 rounded-full object-cover' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdlMd7stpWUCmjpfRjUsQ72xSWikidbgaI1w&s" alt="" />
                     <h4 className='text-lg font-medium capitalize'>{captain.fullname.firstname + " " + captain.fullname.lastname}</h4>
-                </div>
-                <div>
-                    <h4 className='text-xl font-semibold'>₹295.20</h4>
-                    <p className='text-sm text-gray-600'>Earned</p>
+                    <div className='flex items-center gap-2'>
+                        <div className='w-2 h-2 bg-green-500 rounded-full'></div>
+                        <span className='text-sm text-green-600'>Online</span>
+                    </div>
                 </div>
             </div>
-            <div className='flex p-3 mt-8 bg-gray-100 rounded-xl justify-center gap-5 items-start'>
-                <div className='text-center'>
-                    <i className="text-3xl mb-2 font-thin ri-timer-2-line"></i>
-                    <h5 className='text-lg font-medium'>10.2</h5>
-                    <p className='text-sm text-gray-600'>Hours Online</p>
+            <div className='mt-4 p-4 bg-gray-50 rounded-lg'>
+                <h5 className='text-md font-semibold mb-2'>Vehicle Details</h5>
+                <div className='grid grid-cols-2 gap-4'>
+                    <div>
+                        <p className='text-sm text-gray-600'>Vehicle Type</p>
+                        <p className='font-medium capitalize'>{captain.vehicle?.vehicleType || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className='text-sm text-gray-600'>Color</p>
+                        <p className='font-medium capitalize'>{captain.vehicle?.color || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className='text-sm text-gray-600'>Number Plate</p>
+                        <p className='font-medium uppercase'>{captain.vehicle?.plate || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className='text-sm text-gray-600'>Capacity</p>
+                        <p className='font-medium'>{captain.vehicle?.capacity || 'N/A'} seats</p>
+                    </div>
                 </div>
-                <div className='text-center'>
-                    <i className="text-3xl mb-2 font-thin ri-speed-up-line"></i>
-                    <h5 className='text-lg font-medium'>10.2</h5>
-                    <p className='text-sm text-gray-600'>Hours Online</p>
+                <div className='mt-3'>
+                    <p className='text-sm text-gray-600'>UPI ID</p>
+                    <p className='font-medium'>{captain.upiId || 'captain@upi'}</p>
                 </div>
-                <div className='text-center'>
-                    <i className="text-3xl mb-2 font-thin ri-booklet-line"></i>
-                    <h5 className='text-lg font-medium'>10.2</h5>
-                    <p className='text-sm text-gray-600'>Hours Online</p>
-                </div>
-
             </div>
         </div>
     )
