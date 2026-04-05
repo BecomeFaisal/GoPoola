@@ -75,7 +75,7 @@ const ConfirmRidePopUp = (props) => {
                       <p className='text-xs text-gray-600 capitalize'>{passenger.status}</p>
                       {passenger.status === 'pending' && (
                         <button 
-                          onClick={() => handleAcceptCarpoolRequest(passenger._id)}
+                          onClick={() => handleAcceptCarpoolRequest(passenger.user?._id || passenger._id)}
                           className='text-xs mt-1 bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600'
                         >
                           Accept

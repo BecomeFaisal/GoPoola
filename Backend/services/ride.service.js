@@ -266,7 +266,8 @@ module.exports.confirmRide = async ({
         console.log('confirmRide: passengers before update:', ride.passengers.map(p => ({ id: p._id.toString(), user: p.user, status: p.status })));
         const passenger = ride.passengers.find(p => {
             const userId = p.user && p.user._id ? p.user._id.toString() : p.user?.toString?.();
-            return userId === passengerId;
+            const passengerDocId = p._id?.toString?.();
+            return userId === passengerId || passengerDocId === passengerId;
         });
         console.log('confirmRide: passenger lookup result:', passenger ? { id: passenger._id.toString(), status: passenger.status, user: passenger.user } : 'not found');
         if (passenger) {
@@ -356,23 +357,26 @@ module.exports.endRide = async ({ rideId, captain }) => {
     const ride = await rideModel.findOne({
         _id: rideId,
         captain: captain._id
-    }).populate('user').populate('captain').select('+otp');
+    }).populate('passengers.user').populate('captain').select('+otp');
 
     if (!ride) {
         throw new Error('Ride not found');
     }
 
     if (ride.status !== 'ongoing') {
-        throw new Error('Ride not ongoing');
+        throw new Error(`Ride not ongoing (current status: ${ride.status})`);
     }
 
-    await rideModel.findOneAndUpdate({
+    const updatedRide = await rideModel.findOneAndUpdate({
         _id: rideId
     }, {
         status: 'completed'
-    })
+    }, { new: true });
 
-    return ride;
+    // Fetch the updated ride with populated passengers
+    const populatedRide = await rideModel.findById(rideId).populate('passengers.user').populate('captain').select('+otp');
+
+    return populatedRide || updatedRide || ride;
 }
 
 module.exports.requestCarpool = async ({
