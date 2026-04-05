@@ -9,7 +9,7 @@ router.post('/create',
     authMiddleware.authUser,
     body('pickup').isString().isLength({ min: 3 }).withMessage('Invalid pickup address'),
     body('destination').isString().isLength({ min: 3 }).withMessage('Invalid destination address'),
-    body('vehicleType').isString().isIn([ 'auto', 'car', 'moto', 'autoCarpool', 'carCarpool' ]).withMessage('Invalid vehicle type'),
+    body('vehicleType').isString().isIn([ 'auto', 'car', 'motorcycle', 'autoCarpool', 'carCarpool' ]).withMessage('Invalid vehicle type'),
     rideController.createRide
 )
 
@@ -26,6 +26,13 @@ router.post('/confirm',
     rideController.confirmRide
 )
 
+router.post('/accept-passenger',
+    authMiddleware.authCaptain,
+    body('rideId').isMongoId().withMessage('Invalid ride id'),
+    body('passengerId').isMongoId().withMessage('Invalid passenger id'),
+    rideController.acceptPassenger
+)
+
 router.get('/start-ride',
     authMiddleware.authCaptain,
     query('rideId').isMongoId().withMessage('Invalid ride id'),
@@ -39,6 +46,12 @@ router.post('/end-ride',
     rideController.endRide
 )
 
-
+router.post('/request-carpool',
+    authMiddleware.authUser,
+    body('rideId').isMongoId().withMessage('Invalid ride id'),
+    body('pickup').isString().isLength({ min: 3 }).withMessage('Invalid pickup address'),
+    body('destination').isString().isLength({ min: 3 }).withMessage('Invalid destination address'),
+    rideController.requestCarpool
+)
 
 module.exports = router;

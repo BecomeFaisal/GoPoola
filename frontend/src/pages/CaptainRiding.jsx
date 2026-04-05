@@ -1,16 +1,60 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect, useContext } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import FinishRide from '../components/FinishRide'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import LiveTracking from '../components/LiveTracking'
+import { SocketContext } from '../context/SocketContext'
+import { CaptainDataContext } from '../context/CapatainContext'
+import axios from 'axios'
 
 const CaptainRiding = () => {
 
     const [ finishRidePanel, setFinishRidePanel ] = useState(false)
+    const [ carpoolNotification, setCarpoolNotification ] = useState(null)
     const finishRidePanelRef = useRef(null)
     const location = useLocation()
     const rideData = location.state?.ride
+
+    const { socket } = useContext(SocketContext)
+    const { captain } = useContext(CaptainDataContext)
+
+    useEffect(() => {
+        socket.on('carpool-request', (data) => {
+            console.log('CaptainRiding: Received carpool request:', data)
+            setCarpoolNotification(data)
+        })
+
+        socket.on('passenger-accepted', (data) => {
+            console.log('CaptainRiding: Passenger accepted:', data)
+            // Update ride data with new passenger
+            // You might want to refresh the ride data here
+        })
+
+        return () => {
+            socket.off('carpool-request')
+            socket.off('passenger-accepted')
+        }
+    }, [socket])
+
+    const acceptCarpoolRequest = async (passengerId) => {
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/accept-passenger`, {
+                rideId: carpoolNotification.rideId,
+                passengerId: passengerId
+            }, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('captainToken') || localStorage.getItem('token')}`
+                }
+            })
+
+            console.log('Carpool request accepted:', response.data)
+            setCarpoolNotification(null)
+            // Update ride data if needed
+        } catch (error) {
+            console.error('Error accepting carpool request:', error)
+        }
+    }
 
 
 
@@ -30,6 +74,30 @@ const CaptainRiding = () => {
     return (
         <div className='h-screen relative flex flex-col justify-end'>
 
+            {/* Carpool Notification */}
+            {carpoolNotification && (
+                <div className='fixed top-20 right-4 bg-yellow-400 text-black p-4 rounded-lg shadow-lg z-20 max-w-sm'>
+                    <h3 className='font-semibold'>New Passenger Request!</h3>
+                    <p className='text-sm'>Passenger: {carpoolNotification.passengerName}</p>
+                    <p className='text-sm'>Route: {carpoolNotification.pickup} → {carpoolNotification.destination}</p>
+                    <p className='text-sm'>Fare: ₹{carpoolNotification.fare}</p>
+                    <div className='mt-2 flex gap-2'>
+                        <button
+                            onClick={() => acceptCarpoolRequest(carpoolNotification.passengerId)}
+                            className='bg-green-600 text-white px-3 py-1 rounded text-sm'
+                        >
+                            Accept
+                        </button>
+                        <button
+                            onClick={() => setCarpoolNotification(null)}
+                            className='bg-red-600 text-white px-3 py-1 rounded text-sm'
+                        >
+                            Decline
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className='fixed p-6 top-0 flex items-center justify-between w-screen'>
                 <img className='w-16' src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png" alt="" />
                 <Link to='/captain-home' className=' h-10 w-10 bg-white flex items-center justify-center rounded-full'>
@@ -45,7 +113,21 @@ const CaptainRiding = () => {
                 <h5 className='p-1 text-center w-[90%] absolute top-0' onClick={() => {
 
                 }}><i className="text-3xl text-gray-800 ri-arrow-up-wide-line"></i></h5>
-                <h4 className='text-xl font-semibold'>{'4 KM away'}</h4>
+                <div className='flex-1'>
+                    <h4 className='text-xl font-semibold'>{'4 KM away'}</h4>
+                    {rideData?.passengers?.length > 1 && (
+                        <div className='mt-2'>
+                            <p className='text-sm font-medium'>Carpool Passengers: {rideData.passengers.length}</p>
+                            <div className='flex flex-wrap gap-2 mt-1'>
+                                {rideData.passengers.map((passenger, index) => (
+                                    <div key={index} className='bg-white bg-opacity-20 rounded px-2 py-1 text-xs'>
+                                        {passenger.user.fullname.firstname} - ₹{passenger.fare}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
                 <button className=' bg-green-600 text-white font-semibold p-3 px-10 rounded-lg'>Complete Ride</button>
             </div>
             <div ref={finishRidePanelRef} className='fixed w-full z-[500] bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>

@@ -12,7 +12,20 @@ const UserLogin = () => {
   const { user, setUser } = useContext(UserDataContext)
   const navigate = useNavigate()
 
-
+  // Helper function to decode JWT without external library
+  const decodeToken = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Failed to decode token:', error);
+      return null;
+    }
+  }
 
   const submitHandler = async (e) => {
     e.preventDefault();
@@ -21,13 +34,32 @@ const UserLogin = () => {
       email: email,
       password: password
     }
+    console.log('UserLogin: logging in with email:', email);
 
     const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/users/login`, userData)
 
     if (response.status === 200) {
       const data = response.data
+      console.log('UserLogin: login successful, user ID:', data.user._id);
+      
+      // Verify token content
+      const decoded = decodeToken(data.token);
+      console.log('UserLogin: decoded token ID:', decoded?._id);
+      console.log('UserLogin: token ID matches user ID?', decoded?._id === data.user._id);
+      
       setUser(data.user)
+      
+      // IMPORTANT: Clear ALL captain-related data to prevent mixing tokens
+      localStorage.removeItem('captain')
+      localStorage.removeItem('captainData')
+      localStorage.removeItem('userRole')
+      
       localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('userRole', 'user')
+      
+      console.log('UserLogin: localStorage cleared and user token set');
+      
       navigate('/home')
     }
 

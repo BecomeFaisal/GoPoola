@@ -2,11 +2,26 @@ const mongoose = require('mongoose');
 
 
 const rideSchema = new mongoose.Schema({
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
-        required: true
-    },
+    passengers: [{
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'user',
+            required: true
+        },
+        fare: {
+            type: Number,
+            required: true
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'accepted', 'ongoing', 'completed', 'cancelled'],
+            default: 'pending'
+        },
+        joinedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     captain: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'captain',
@@ -22,6 +37,11 @@ const rideSchema = new mongoose.Schema({
     fare: {
         type: Number,
         required: true,
+    },
+    vehicleType: {
+        type: String,
+        required: true,
+        enum: [ 'car', 'motorcycle', 'auto', 'carCarpool', 'autoCarpool' ],
     },
 
     status: {

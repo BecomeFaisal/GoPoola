@@ -4,20 +4,25 @@ const captainModel = require('../models/captain.model');
 module.exports.getAddressCoordinate = async (address) => {
     const apiKey = process.env.GOOGLE_MAPS_API;
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+    console.log('Geocoding address:', address);
+    console.log('API URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
 
     try {
         const response = await axios.get(url);
+        console.log('Geocode response status:', response.data.status);
         if (response.data.status === 'OK') {
             const location = response.data.results[ 0 ].geometry.location;
+            console.log('Coordinates:', location);
             return {
                 ltd: location.lat,
                 lng: location.lng
             };
         } else {
+            console.log('Geocode error:', response.data.error_message || response.data.status);
             throw new Error('Unable to fetch coordinates');
         }
     } catch (error) {
-        console.error(error);
+        console.error('Error in getAddressCoordinate:', error.message);
         throw error;
     }
 }
@@ -77,6 +82,7 @@ module.exports.getAutoCompleteSuggestions = async (input) => {
 }
 
 module.exports.getCaptainsInTheRadius = async (ltd, lng, radius, vehicleType) => {
+    console.log('Finding captains in radius:', { ltd, lng, radius, vehicleType });
 
     // radius in km
 
@@ -107,6 +113,8 @@ module.exports.getCaptainsInTheRadius = async (ltd, lng, radius, vehicleType) =>
             vehicleTypeFilter = {};
     }
 
+    console.log('Vehicle type filter:', vehicleTypeFilter);
+
     const captains = await captainModel.find({
         location: {
             $near: {
@@ -119,6 +127,8 @@ module.exports.getCaptainsInTheRadius = async (ltd, lng, radius, vehicleType) =>
         },
         ...vehicleTypeFilter
     });
+
+    console.log(`Found ${captains.length} captains matching criteria`);
 
     return captains;
 

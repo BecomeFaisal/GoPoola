@@ -14,20 +14,55 @@ const Captainlogin = () => {
 
 
 
+
+  // Helper function to decode JWT without external library
+  const decodeToken = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Failed to decode token:', error);
+      return null;
+    }
+  }
+
   const submitHandler = async (e) => {
     e.preventDefault();
-    const captain = {
+    const captainData = {
       email: email,
       password
     }
+    console.log('CaptainLogin: logging in with email:', email);
 
-    const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/captains/login`, captain)
+    const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/captains/login`, captainData)
 
     if (response.status === 200) {
       const data = response.data
+      console.log('CaptainLogin: login successful, captain ID:', data.captain._id);
+      console.log('CaptainLogin: token received:', data.token ? 'present' : 'missing');
 
+      // Verify token content
+      const decoded = decodeToken(data.token);
+      console.log('CaptainLogin: decoded token ID:', decoded?._id);
+      console.log('CaptainLogin: token ID matches captain ID?', decoded?._id === data.captain._id);
+
+      // IMPORTANT: Clear ALL user-related data to prevent mixing tokens
+      localStorage.removeItem('user')
+      localStorage.removeItem('userData')
+      localStorage.removeItem('userRole')
+      
+      // Set captain data
       setCaptain(data.captain)
       localStorage.setItem('token', data.token)
+      localStorage.setItem('captainData', JSON.stringify(data.captain))
+      localStorage.setItem('userRole', 'captain')
+      
+      console.log('CaptainLogin: localStorage cleared and captain token set');
+      
       navigate('/captain-home')
 
     }

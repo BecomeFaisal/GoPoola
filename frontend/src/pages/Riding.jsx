@@ -11,6 +11,9 @@ const Riding = () => {
     const { socket } = useContext(SocketContext)
     const navigate = useNavigate()
 
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const currentPassenger = ride?.passengers?.find(p => p.user._id === currentUser._id);
+
     socket.on("ride-ended", () => {
         navigate('/home')
     })
@@ -46,11 +49,30 @@ const Riding = () => {
                                 <p className='text-sm -mt-1 text-gray-600'>{ride?.destination}</p>
                             </div>
                         </div>
+
+                        {/* Show all passengers if carpool */}
+                        {ride?.passengers?.length > 1 && (
+                            <div className='flex items-center gap-5 p-3 border-b-2'>
+                                <i className="ri-group-line"></i>
+                                <div>
+                                    <h3 className='text-lg font-medium'>Carpool Passengers</h3>
+                                    {ride.passengers.map((passenger, index) => (
+                                        <p key={index} className='text-sm -mt-1 text-gray-600'>
+                                            {passenger.user.fullname.firstname} {passenger.user.fullname.lastname} - ₹{passenger.fare}
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className='flex items-center gap-5 p-3'>
                             <i className="ri-currency-line"></i>
                             <div>
-                                <h3 className='text-lg font-medium'>₹{ride?.fare} </h3>
+                                <h3 className='text-lg font-medium'>₹{currentPassenger?.fare || ride?.fare} </h3>
                                 <p className='text-sm -mt-1 text-gray-600'>Cash Cash</p>
+                                {ride?.passengers?.length > 1 && (
+                                    <p className='text-xs text-green-600'>Your share (divided among {ride.passengers.length} passengers)</p>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -46,20 +46,25 @@ module.exports.loginCaptain = async (req, res, next) => {
     }
 
     const { email, password } = req.body;
+    console.log('Captain login attempt with email:', email);
 
     const captain = await captainModel.findOne({ email }).select('+password');
+    console.log('Captain found in database?', !!captain);
 
     if (!captain) {
+        console.log('Captain not found for email:', email);
         return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const isMatch = await captain.comparePassword(password);
 
     if (!isMatch) {
+        console.log('Captain password mismatch');
         return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const token = captain.generateAuthToken();
+    console.log('Captain login successful, generated token for captain ID:', captain._id);
 
     res.cookie('token', token);
 

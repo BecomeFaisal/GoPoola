@@ -10,6 +10,9 @@ const FinishRide = (props) => {
     const navigate = useNavigate()
     const [showPaymentQR, setShowPaymentQR] = useState(false)
 
+    // Calculate total fare from all passengers
+    const totalFare = props.ride?.passengers?.reduce((sum, passenger) => sum + (passenger.fare || 0), 0) || props.ride?.fare || 0
+
     async function endRide() {
         const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/end-ride`, {
 
@@ -38,7 +41,7 @@ const FinishRide = (props) => {
             {showPaymentQR ? (
                 <div className='flex flex-col items-center'>
                     <PaymentQR
-                        amount={props.ride?.fare}
+                        amount={totalFare}
                         upiId="devilraquema-1@oksbi"
                         rideId={props.ride?._id}
                     />
@@ -62,7 +65,7 @@ const FinishRide = (props) => {
                     <div className='flex items-center justify-between p-4 border-2 border-yellow-400 rounded-lg mt-4'>
                         <div className='flex items-center gap-3 '>
                             <img className='h-12 rounded-full object-cover w-12' src="https://i.pinimg.com/236x/af/26/28/af26280b0ca305be47df0b799ed1b12b.jpg" alt="" />
-                            <h2 className='text-lg font-medium'>{props.ride?.user.fullname.firstname}</h2>
+                            <h2 className='text-lg font-medium'>{props.ride?.passengers?.[0]?.user.fullname.firstname}</h2>
                         </div>
                         <h5 className='text-lg font-semibold'>2.2 KM</h5>
                     </div>
@@ -85,7 +88,7 @@ const FinishRide = (props) => {
                             <div className='flex items-center gap-5 p-3'>
                                 <i className="ri-currency-line"></i>
                                 <div>
-                                    <h3 className='text-lg font-medium'>₹{props.ride?.fare} </h3>
+                                    <h3 className='text-lg font-medium'>₹{totalFare} </h3>
                                     <p className='text-sm -mt-1 text-gray-600'>UPI Payment</p>
                                 </div>
                             </div>
@@ -97,7 +100,7 @@ const FinishRide = (props) => {
                                 className='w-full bg-blue-600 text-white font-semibold p-3 rounded-lg flex items-center justify-center gap-2'
                             >
                                 <i className="ri-qr-code-line"></i>
-                                Collect Payment (₹{props.ride?.fare})
+                                Collect Payment (₹{totalFare})
                             </button>
 
                             <button

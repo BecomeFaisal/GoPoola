@@ -34,6 +34,9 @@ const Home = () => {
     const [ fare, setFare ] = useState({})
     const [ vehicleType, setVehicleType ] = useState(null)
     const [ ride, setRide ] = useState(null)
+    const [ carpoolRequests, setCarpoolRequests ] = useState([])
+    const [ showCarpoolPanel, setShowCarpoolPanel ] = useState(false)
+    const [ creatingRide, setCreatingRide ] = useState(false)
 
     const navigate = useNavigate()
 
@@ -45,17 +48,34 @@ const Home = () => {
     }, [ user ])
 
     socket.on('ride-confirmed', ride => {
-
-
+        console.log('Ride confirmed, resetting states');
         setVehicleFound(false)
         setWaitingForDriver(true)
         setRide(ride)
+        setCreatingRide(false) // Reset loading state
     })
 
     socket.on('ride-started', ride => {
         console.log("ride")
         setWaitingForDriver(false)
         navigate('/riding', { state: { ride } }) // Updated navigate to include ride data
+    })
+
+    socket.on('carpool-available', (data) => {
+        setCarpoolRequests(prev => [...prev, data])
+        setShowCarpoolPanel(true)
+    })
+
+    socket.on('carpool-accepted', (ride) => {
+        setWaitingForDriver(true)
+        setRide(ride)
+        setShowCarpoolPanel(false)
+    })
+
+    socket.on('carpool-request-submitted', (data) => {
+        console.log('Carpool request submitted:', data);
+        alert('Your carpool request has been sent! Waiting for captain approval.');
+        // Could show a waiting screen or notification here
     })
 
 
@@ -184,17 +204,57 @@ const Home = () => {
     }
 
     async function createRide() {
-        const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/create`, {
-            pickup,
-            destination,
-            vehicleType
-        }, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-        })
+        if (creatingRide) {
+            console.log('Ride creation already in progress, ignoring duplicate request');
+            return;
+        }
 
+        console.log('Frontend: Creating ride with:', { pickup, destination, vehicleType });
+        setCreatingRide(true);
 
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/create`, {
+                pickup,
+                destination,
+                vehicleType
+            }, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            console.log('Frontend: Ride created successfully:', response.data);
+
+            // Handle success - wait for socket events
+        } catch (error) {
+            console.error('Frontend: Error creating ride:', error.response?.data || error.message)
+            setVehicleFound(false) // Reset if failed
+        } finally {
+            setCreatingRide(false);
+        }
+    }
+
+    async function requestCarpool(rideId) {
+        console.log('Requesting to join carpool:', rideId);
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/request-carpool`, {
+                rideId,
+                pickup,
+                destination
+            }, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            console.log('Carpool request sent successfully');
+            // Request sent, wait for captain's response
+        } catch (error) {
+            console.error('Error requesting carpool:', error)
+        }
+    }
+
+    function acceptCarpoolRequest(requestId) {
+        // This would be handled by the captain, but for now just remove from list
+        setCarpoolRequests(prev => prev.filter(req => req.id !== requestId))
     }
 
     return (
@@ -286,6 +346,40 @@ const Home = () => {
                     setWaitingForDriver={setWaitingForDriver}
                     waitingForDriver={waitingForDriver} />
             </div>
+
+            {/* Carpool Requests Panel */}
+            {showCarpoolPanel && carpoolRequests.length > 0 && (
+                <div className='fixed top-20 right-4 bg-blue-500 text-white p-4 rounded-lg shadow-lg z-20 max-w-sm'>
+                    <h3 className='font-semibold mb-2'>Available Carpools</h3>
+                    {carpoolRequests.map((request, index) => (
+                        <div key={index} className='mb-3 p-2 bg-white bg-opacity-20 rounded'>
+                            <p className='text-sm'>Captain: {request.captainName}</p>
+                            <p className='text-sm'>Route: {request.pickup} → {request.destination}</p>
+                            <p className='text-sm'>Your share: ₹{request.fare}</p>
+                            <div className='mt-2 flex gap-2'>
+                                <button
+                                    onClick={() => requestCarpool(request.rideId)}
+                                    className='bg-green-600 text-white px-3 py-1 rounded text-sm'
+                                >
+                                    Request Join
+                                </button>
+                                <button
+                                    onClick={() => acceptCarpoolRequest(request.id)}
+                                    className='bg-red-600 text-white px-3 py-1 rounded text-sm'
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    <button
+                        onClick={() => setShowCarpoolPanel(false)}
+                        className='mt-2 bg-gray-600 text-white px-3 py-1 rounded text-sm w-full'
+                    >
+                        Close
+                    </button>
+                </div>
+            )}
         </div>
     )
 }

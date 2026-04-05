@@ -14,6 +14,8 @@ const CaptainHome = () => {
 
     const [ ridePopupPanel, setRidePopupPanel ] = useState(false)
     const [ confirmRidePopupPanel, setConfirmRidePopupPanel ] = useState(false)
+    const [ carpoolNotification, setCarpoolNotification ] = useState(null)
+    const [ currentRide, setCurrentRide ] = useState(null)
 
     const ridePopupPanelRef = useRef(null)
     const confirmRidePopupPanelRef = useRef(null)
@@ -21,6 +23,21 @@ const CaptainHome = () => {
 
     const { socket } = useContext(SocketContext)
     const { captain } = useContext(CaptainDataContext)
+
+    // Helper function to decode JWT without external library
+    const decodeToken = (token) => {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (error) {
+            console.error('CaptainHome: Failed to decode token:', error);
+            return null;
+        }
+    }
 
     useEffect(() => {
         socket.emit('join', {
@@ -49,31 +66,77 @@ const CaptainHome = () => {
     }, [])
 
     socket.on('new-ride', (data) => {
-
         setRide(data)
         setRidePopupPanel(true)
+    })
 
+    socket.on('carpool-request', (data) => {
+        setCarpoolNotification(data)
+        // Show notification to captain
+    })
+
+    socket.on('ride-started', (data) => {
+        setCurrentRide(data)
+        setConfirmRidePopupPanel(false)
+        // Navigate to riding page or update UI
     })
 
     async function confirmRide() {
+        const token = localStorage.getItem('token');
+        console.log('CaptainHome confirmRide: captain from context:', captain);
+        console.log('CaptainHome confirmRide: token from localStorage:', token ? 'present' : 'missing');
+        
+        // CRITICAL: Verify token content
+        const decoded = decodeToken(token);
+        console.log('CaptainHome confirmRide: decoded token ID:', decoded?._id);
+        console.log('CaptainHome confirmRide: captain context ID:', captain._id);
+        console.log('CaptainHome confirmRide: token ID matches captain ID?', decoded?._id === captain._id);
+        console.log('CaptainHome confirmRide: rideId:', ride._id);
 
-        const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/confirm`, {
+        if (decoded?._id !== captain._id) {
+            console.error('CaptainHome confirmRide: TOKEN MISMATCH! Token contains wrong captain ID');
+            console.error('Token has ID:', decoded?._id, 'but captain has ID:', captain._id);
+            alert('ERROR: Authentication token mismatch. Please logout and login again.');
+            return;
+        }
 
-            rideId: ride._id,
-            captainId: captain._id,
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/confirm`, {
+                rideId: ride._id,
+            }, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+            console.log('CaptainHome confirmRide: success response:', response.data);
 
-
-        }, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-        })
-
-        setRidePopupPanel(false)
-        setConfirmRidePopupPanel(true)
-
+            setRidePopupPanel(false)
+            setConfirmRidePopupPanel(true)
+        } catch (error) {
+            console.error('CaptainHome confirmRide: error:', error.response?.data || error.message);
+        }
     }
 
+    async function acceptPassenger(passengerId) {
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/accept-passenger`, {
+                rideId: carpoolNotification.rideId,
+                passengerId: passengerId
+            }, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+
+            setCarpoolNotification(null)
+            // Update current ride with new passenger
+            if (currentRide) {
+                setCurrentRide(response.data)
+            }
+        } catch (error) {
+            console.error('Error accepting passenger:', error)
+        }
+    }
 
     useGSAP(function () {
         if (ridePopupPanel) {
@@ -127,6 +190,39 @@ const CaptainHome = () => {
                     ride={ride}
                     setConfirmRidePopupPanel={setConfirmRidePopupPanel} setRidePopupPanel={setRidePopupPanel} />
             </div>
+
+            {/* Carpool Notification */}
+            {carpoolNotification && (
+                <div className='fixed top-20 right-4 bg-yellow-400 text-black p-4 rounded-lg shadow-lg z-20 max-w-sm'>
+                    <h3 className='font-semibold'>New Passenger Request!</h3>
+                    <p className='text-sm'>Passenger: {carpoolNotification.passengerName}</p>
+                    <p className='text-sm'>Route: {carpoolNotification.pickup} → {carpoolNotification.destination}</p>
+                    <p className='text-sm'>Fare: ₹{carpoolNotification.fare}</p>
+                    <div className='mt-2 flex gap-2'>
+                        <button
+                            onClick={() => acceptPassenger(carpoolNotification.passengerId)}
+                            className='bg-green-600 text-white px-3 py-1 rounded text-sm'
+                        >
+                            Accept
+                        </button>
+                        <button
+                            onClick={() => setCarpoolNotification(null)}
+                            className='bg-red-600 text-white px-3 py-1 rounded text-sm'
+                        >
+                            Decline
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Current Ride Info */}
+            {currentRide && (
+                <div className='fixed bottom-20 left-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-20 max-w-sm'>
+                    <h3 className='font-semibold'>Current Ride</h3>
+                    <p className='text-sm'>Passengers: {currentRide.passengers.length}</p>
+                    <p className='text-sm'>Status: {currentRide.status}</p>
+                </div>
+            )}
         </div>
     )
 }
