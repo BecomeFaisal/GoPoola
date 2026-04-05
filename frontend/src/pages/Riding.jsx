@@ -12,11 +12,18 @@ const Riding = () => {
     const navigate = useNavigate()
 
     const currentUser = JSON.parse(localStorage.getItem('user'));
-    const currentPassenger = ride?.passengers?.find(p => p.user._id === currentUser._id);
+    const currentPassenger = ride?.passengers?.find(p => p.user?._id?.toString() === currentUser?._id?.toString());
 
-    socket.on("ride-ended", () => {
-        navigate('/home')
-    })
+    useEffect(() => {
+        const handleRideEnded = () => {
+            navigate('/home')
+        }
+
+        socket.on('ride-ended', handleRideEnded)
+        return () => {
+            socket.off('ride-ended', handleRideEnded)
+        }
+    }, [socket, navigate])
 
 
     return (

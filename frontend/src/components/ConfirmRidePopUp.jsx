@@ -8,6 +8,7 @@ const ConfirmRidePopUp = (props) => {
     const navigate = useNavigate()
     const totalPassengers = props.ride?.passengers?.length || 0;
     const isCarpool = props.ride?.vehicleType?.includes('Carpool');
+    const currentPassengerFare = isCarpool ? props.ride?.passengers?.[0]?.fare || props.ride?.fare : props.ride?.fare;
 
     const submitHander = async (e) => {
         e.preventDefault()
@@ -25,7 +26,7 @@ const ConfirmRidePopUp = (props) => {
         if (response.status === 200) {
             props.setConfirmRidePopupPanel(false)
             props.setRidePopupPanel(false)
-            navigate('/captain-riding', { state: { ride: props.ride } })
+            navigate('/captain-riding', { state: { ride: response.data } })
         }
     }
 
@@ -104,8 +105,8 @@ const ConfirmRidePopUp = (props) => {
                     <div className='flex items-center gap-5 p-3'>
                         <i className="ri-currency-line"></i>
                         <div>
-                            <h3 className='text-lg font-medium'>₹{props.ride?.fare}</h3>
-                            <p className='text-sm -mt-1 text-gray-600'>{props.ride?.vehicleType}</p>
+                            <h3 className='text-lg font-medium'>₹{currentPassengerFare}</h3>
+                            <p className='text-sm -mt-1 text-gray-600'>{props.ride?.vehicleType}{isCarpool ? ` • ${totalPassengers} passengers` : ''}</p>
                         </div>
                     </div>
                 </div>

@@ -65,24 +65,39 @@ const CaptainHome = () => {
         // return () => clearInterval(locationInterval)
     }, [])
 
-    socket.on('new-ride', (data) => {
-        setRide(data)
-        setRidePopupPanel(true)
-    })
+    useEffect(() => {
+        socket.on('new-ride', (data) => {
+            setRide(data)
+            setRidePopupPanel(true)
+        })
 
-    socket.on('carpool-request', (data) => {
-        setCarpoolNotification(data)
-        // Show notification to captain
-    })
+        socket.on('carpool-request', (data) => {
+            setCarpoolNotification(data)
+        })
 
-    socket.on('ride-started', (data) => {
-        setCurrentRide(data)
-        setConfirmRidePopupPanel(false)
-        // Navigate to riding page or update UI
-    })
+        socket.on('passenger-accepted', (data) => {
+            console.log('CaptainHome: passenger accepted event', data)
+            if (data.ride) {
+                setRide(data.ride)
+                setCurrentRide(data.ride)
+            }
+        })
+
+        socket.on('ride-started', (data) => {
+            setCurrentRide(data)
+            setConfirmRidePopupPanel(false)
+        })
+
+        return () => {
+            socket.off('new-ride')
+            socket.off('carpool-request')
+            socket.off('passenger-accepted')
+            socket.off('ride-started')
+        }
+    }, [socket])
 
     async function confirmRide() {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('captainToken') || localStorage.getItem('token');
         console.log('CaptainHome confirmRide: captain from context:', captain);
         console.log('CaptainHome confirmRide: token from localStorage:', token ? 'present' : 'missing');
         
@@ -101,11 +116,12 @@ const CaptainHome = () => {
         }
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/confirm`, {
+            const authToken = localStorage.getItem('captainToken') || token;
+        const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/confirm`, {
                 rideId: ride._id,
             }, {
                 headers: {
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${authToken}`
                 }
             })
             console.log('CaptainHome confirmRide: success response:', response.data);
@@ -119,19 +135,23 @@ const CaptainHome = () => {
 
     async function acceptPassenger(passengerId) {
         try {
-            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/accept-passenger`, {
+            const authToken = localStorage.getItem('captainToken') || localStorage.getItem('token');
+        const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/accept-passenger`, {
                 rideId: carpoolNotification.rideId,
                 passengerId: passengerId
             }, {
                 headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                    Authorization: `Bearer ${authToken}`
                 }
             })
 
             setCarpoolNotification(null)
-            // Update current ride with new passenger
+            // Update current ride and main ride with new passenger data
             if (currentRide) {
                 setCurrentRide(response.data)
+            }
+            if (ride) {
+                setRide(response.data) // Update the ride shown in ConfirmRidePopUp
             }
         } catch (error) {
             console.error('Error accepting passenger:', error)
@@ -188,7 +208,9 @@ const CaptainHome = () => {
             <div ref={confirmRidePopupPanelRef} className='fixed w-full h-screen z-10 bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>
                 <ConfirmRidePopUp
                     ride={ride}
-                    setConfirmRidePopupPanel={setConfirmRidePopupPanel} setRidePopupPanel={setRidePopupPanel} />
+                    setConfirmRidePopupPanel={setConfirmRidePopupPanel}
+                    setRidePopupPanel={setRidePopupPanel}
+                    onPassengerAccepted={(updatedRide) => setRide(updatedRide)} />
             </div>
 
             {/* Carpool Notification */}
@@ -197,7 +219,8 @@ const CaptainHome = () => {
                     <h3 className='font-semibold'>New Passenger Request!</h3>
                     <p className='text-sm'>Passenger: {carpoolNotification.passengerName}</p>
                     <p className='text-sm'>Route: {carpoolNotification.pickup} → {carpoolNotification.destination}</p>
-                    <p className='text-sm'>Fare: ₹{carpoolNotification.fare}</p>
+                    <p className='text-sm'>Current passengers: {carpoolNotification.currentPassengers || 1}</p>
+                    <p className='text-sm'>Fare after acceptance: ₹{carpoolNotification.fareAfterAcceptance || carpoolNotification.fare} per passenger</p>
                     <div className='mt-2 flex gap-2'>
                         <button
                             onClick={() => acceptPassenger(carpoolNotification.passengerId)}

@@ -2,14 +2,14 @@ import React from 'react'
 
 const WaitingForDriver = (props) => {
   const currentUser = JSON.parse(localStorage.getItem('user'));
-  const currentPassenger = props.ride?.passengers?.find(p => p.user && p.user._id === currentUser._id);
+  const currentPassenger = props.ride?.passengers?.find(p => p.user && p.user._id?.toString() === currentUser?._id?.toString());
   const totalPassengers = props.ride?.passengers?.length || 0;
-  const dividedFare = currentPassenger?.fare || 0;
+  const dividedFare = currentPassenger?.fare || props.ride?.passengers?.[0]?.fare || props.ride?.fare || 0;
 
   return (
     <div>
       <h5 className='p-1 text-center w-[93%] absolute top-0' onClick={() => {
-        props.waitingForDriver(false)
+        props.setWaitingForDriver(false)
       }}><i className="text-3xl text-gray-200 ri-arrow-down-wide-line"></i></h5>
 
       <div className='flex items-center justify-between'>

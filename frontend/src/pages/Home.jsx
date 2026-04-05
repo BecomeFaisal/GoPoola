@@ -45,38 +45,50 @@ const Home = () => {
 
     useEffect(() => {
         socket.emit("join", { userType: "user", userId: user._id })
-    }, [ user ])
 
-    socket.on('ride-confirmed', ride => {
-        console.log('Ride confirmed, resetting states');
-        setVehicleFound(false)
-        setWaitingForDriver(true)
-        setRide(ride)
-        setCreatingRide(false) // Reset loading state
-    })
+        const handleRideConfirmed = ride => {
+            console.log('Ride confirmed, resetting states')
+            setVehicleFound(false)
+            setWaitingForDriver(true)
+            setRide(ride)
+            setCreatingRide(false)
+        }
 
-    socket.on('ride-started', ride => {
-        console.log("ride")
-        setWaitingForDriver(false)
-        navigate('/riding', { state: { ride } }) // Updated navigate to include ride data
-    })
+        const handleRideStarted = ride => {
+            console.log('ride started', ride)
+            setWaitingForDriver(false)
+            navigate('/riding', { state: { ride } })
+        }
 
-    socket.on('carpool-available', (data) => {
-        setCarpoolRequests(prev => [...prev, data])
-        setShowCarpoolPanel(true)
-    })
+        const handleCarpoolAvailable = data => {
+            setCarpoolRequests(prev => [...prev, data])
+            setShowCarpoolPanel(true)
+        }
 
-    socket.on('carpool-accepted', (ride) => {
-        setWaitingForDriver(true)
-        setRide(ride)
-        setShowCarpoolPanel(false)
-    })
+        const handleCarpoolAccepted = ride => {
+            setWaitingForDriver(true)
+            setRide(ride)
+            setShowCarpoolPanel(false)
+        }
 
-    socket.on('carpool-request-submitted', (data) => {
-        console.log('Carpool request submitted:', data);
-        alert('Your carpool request has been sent! Waiting for captain approval.');
-        // Could show a waiting screen or notification here
-    })
+        const handleCarpoolRequestSubmitted = data => {
+            console.log('Carpool request submitted:', data)
+        }
+
+        socket.on('ride-confirmed', handleRideConfirmed)
+        socket.on('ride-started', handleRideStarted)
+        socket.on('carpool-available', handleCarpoolAvailable)
+        socket.on('carpool-accepted', handleCarpoolAccepted)
+        socket.on('carpool-request-submitted', handleCarpoolRequestSubmitted)
+
+        return () => {
+            socket.off('ride-confirmed', handleRideConfirmed)
+            socket.off('ride-started', handleRideStarted)
+            socket.off('carpool-available', handleCarpoolAvailable)
+            socket.off('carpool-accepted', handleCarpoolAccepted)
+            socket.off('carpool-request-submitted', handleCarpoolRequestSubmitted)
+        }
+    }, [ socket, user, navigate ])
 
 
     const handlePickupChange = async (e) => {

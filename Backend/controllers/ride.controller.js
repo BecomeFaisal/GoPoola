@@ -30,17 +30,19 @@ module.exports.createRide = async (req, res) => {
 
         console.log(`Found ${captainsInRadius.length} captains for vehicleType: ${vehicleType}`);
 
-        const rideWithUser = await rideModel.findOne({ _id: ride._id }).populate('passengers.user');
-        console.log('Ride with populated users:', rideWithUser.passengers.map(p => ({ user: p.user ? p.user._id : null, fare: p.fare })));
+        if (ride.status !== 'ongoing') {
+            const rideWithUser = await rideModel.findOne({ _id: ride._id }).populate('passengers.user');
+            console.log('Ride with populated users:', rideWithUser.passengers.map(p => ({ user: p.user ? p.user._id : null, fare: p.fare })));
 
-        captainsInRadius.map(captain => {
-
-            sendMessageToSocketId(captain.socketId, {
-                event: 'new-ride',
-                data: rideWithUser
+            captainsInRadius.forEach(captain => {
+                sendMessageToSocketId(captain.socketId, {
+                    event: 'new-ride',
+                    data: rideWithUser
+                })
             })
-
-        })
+        } else {
+            console.log('Skipping new-ride broadcast because this is an ongoing carpool join request');
+        }
 
     } catch (err) {
         console.log('Error in createRide:', err.message);
@@ -107,21 +109,32 @@ module.exports.acceptPassenger = async (req, res) => {
         const ride = await rideService.confirmRide({ rideId, captain: req.captain, passengerId });
 
         // Send confirmation to the specific passenger
-        const passenger = ride.passengers.id(passengerId);
-        if (passenger && passenger.status === 'accepted') {
+        const passenger = ride.passengers.find(p => p.user.toString() === passengerId);
+        console.log('Controller: passenger found:', passenger ? passenger.status : 'not found');
+        if (passenger && ['accepted', 'ongoing'].includes(passenger.status)) {
+            // Send appropriate event based on ride status
+            const eventName = ride.status === 'ongoing' ? 'ride-started' : 'ride-confirmed';
             sendMessageToSocketId(passenger.user.socketId, {
-                event: 'ride-confirmed',
+                event: eventName,
+                data: ride
+            });
+
+            // Also send explicit carpool accepted notification for the passenger
+            sendMessageToSocketId(passenger.user.socketId, {
+                event: 'carpool-accepted',
                 data: ride
             });
 
             // Notify captain about the new passenger
             if (ride.captain && ride.captain.socketId) {
+                const activePassengers = ride.passengers.filter(p => ['accepted', 'ongoing'].includes(p.status)).length;
                 sendMessageToSocketId(ride.captain.socketId, {
                     event: 'passenger-accepted',
                     data: {
-                        rideId: ride._id,
+                        ride: ride, // Send full updated ride data
                         newPassenger: passenger,
-                        totalPassengers: ride.passengers.length
+                        totalPassengers: activePassengers,
+                        farePerPassenger: passenger.fare
                     }
                 });
             }
@@ -148,9 +161,9 @@ module.exports.startRide = async (req, res) => {
 
         console.log(ride);
 
-        // Send ride-started to all accepted passengers
+        // Send ride-started to all active passengers
         ride.passengers.forEach(passenger => {
-            if (passenger.status === 'accepted') {
+            if (['accepted', 'ongoing'].includes(passenger.status)) {
                 sendMessageToSocketId(passenger.user.socketId, {
                     event: 'ride-started',
                     data: ride
@@ -176,6 +189,8 @@ module.exports.requestCarpool = async (req, res) => {
         const ride = await rideService.requestCarpool({ rideId, user: req.user, pickup, destination });
 
         // Send notification to captain
+        const currentActivePassengers = ride.passengers.filter(p => ['accepted', 'ongoing'].includes(p.status)).length;
+        const fareAfterAcceptance = Math.round(ride.fare / (currentActivePassengers + 1));
         sendMessageToSocketId(ride.captain.socketId, {
             event: 'carpool-request',
             data: {
@@ -184,7 +199,10 @@ module.exports.requestCarpool = async (req, res) => {
                 passengerName: req.user.fullname.firstname + ' ' + req.user.fullname.lastname,
                 pickup,
                 destination,
-                fare: ride.passengers[ride.passengers.length - 1].fare // The fare for the new passenger
+                currentFare: ride.passengers[ride.passengers.length - 1].fare,
+                fareAfterAcceptance: fareAfterAcceptance,
+                currentPassengers: currentActivePassengers,
+                totalPassengersAfter: currentActivePassengers + 1
             }
         });
 
@@ -205,9 +223,9 @@ module.exports.endRide = async (req, res) => {
     try {
         const ride = await rideService.endRide({ rideId, captain: req.captain });
 
-        // Send ride-ended to all accepted passengers
+        // Send ride-ended to all active passengers
         ride.passengers.forEach(passenger => {
-            if (passenger.status === 'accepted') {
+            if (['accepted', 'ongoing'].includes(passenger.status)) {
                 sendMessageToSocketId(passenger.user.socketId, {
                     event: 'ride-ended',
                     data: ride
@@ -215,10 +233,8 @@ module.exports.endRide = async (req, res) => {
             }
         });
 
-
-
         return res.status(200).json(ride);
     } catch (err) {
         return res.status(500).json({ message: err.message });
-    } s
+    }
 }

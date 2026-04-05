@@ -176,14 +176,15 @@ module.exports.createRide = async ({
 
                 // Calculate fare for new passenger
                 const baseFare = fare[vehicleType];
+                const currentActivePassengers = populatedRide.passengers.filter(p => ['accepted', 'ongoing'].includes(p.status)).length;
+                const totalPassengersAfterAcceptance = currentActivePassengers + 1;
+                const fareAfterAcceptance = Math.round(populatedRide.fare / totalPassengersAfterAcceptance);
 
-                // Add passenger as pending
                 populatedRide.passengers.push({
                     user: populatedUser._id,
                     fare: baseFare,
                     status: 'pending'
                 });
-
                 await populatedRide.save();
 
                 // Send notification to captain
@@ -196,7 +197,10 @@ module.exports.createRide = async ({
                         passengerName: populatedUser.fullname.firstname + ' ' + populatedUser.fullname.lastname,
                         pickup,
                         destination,
-                        fare: baseFare
+                        currentFare: baseFare,
+                        fareAfterAcceptance: fareAfterAcceptance,
+                        currentPassengers: currentActivePassengers,
+                        totalPassengersAfter: totalPassengersAfterAcceptance
                     }
                 });
 
@@ -258,35 +262,40 @@ module.exports.confirmRide = async ({
 
     // Find and update the specific passenger status
     if (passengerId) {
-        const passenger = ride.passengers.id(passengerId);
+        const passenger = ride.passengers.find(p => p.user.toString() === passengerId);
+        console.log('Found passenger:', passenger ? passenger._id : 'not found', 'for userId:', passengerId);
         if (passenger) {
-            passenger.status = 'accepted';
+            passenger.status = ride.status === 'ongoing' ? 'ongoing' : 'accepted';
+            console.log('Set passenger status to:', passenger.status);
         }
     } else {
         // If no specific passenger, accept all pending passengers
         ride.passengers.forEach(passenger => {
             if (passenger.status === 'pending') {
-                passenger.status = 'accepted';
+                passenger.status = ride.status === 'ongoing' ? 'ongoing' : 'accepted';
             }
         });
     }
 
     // For carpool rides, recalculate fares when accepting passengers
     if (ride.vehicleType.includes('Carpool')) {
-        const acceptedPassengers = ride.passengers.filter(p => p.status === 'accepted');
-        if (acceptedPassengers.length > 0) {
+        const activePassengerStatuses = ride.status === 'ongoing' ? ['accepted', 'ongoing'] : ['accepted'];
+        const activePassengers = ride.passengers.filter(p => activePassengerStatuses.includes(p.status));
+        if (activePassengers.length > 0) {
             const totalFare = ride.fare; // Original total fare
-            const farePerPassenger = Math.round(totalFare / acceptedPassengers.length);
-            console.log(`Recalculating carpool fares: ${acceptedPassengers.length} passengers, ₹${farePerPassenger} each`);
+            const farePerPassenger = Math.round(totalFare / activePassengers.length);
+            console.log(`Recalculating carpool fares: ${activePassengers.length} passengers, ₹${farePerPassenger} each`);
 
-            // Update fare for all accepted passengers
-            acceptedPassengers.forEach(passenger => {
+            // Update fare for all active passengers
+            activePassengers.forEach(passenger => {
                 passenger.fare = farePerPassenger;
             });
         }
     }
 
+    ride.markModified('passengers');
     await ride.save();
+    console.log('Ride saved, passengers:', ride.passengers.map(p => ({ user: p.user, status: p.status })));
 
     return await rideModel.findById(rideId).populate('passengers.user').populate('captain').select('+otp');
 }

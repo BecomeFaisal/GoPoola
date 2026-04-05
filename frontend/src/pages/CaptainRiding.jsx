@@ -12,30 +12,41 @@ const CaptainRiding = () => {
 
     const [ finishRidePanel, setFinishRidePanel ] = useState(false)
     const [ carpoolNotification, setCarpoolNotification ] = useState(null)
-    const finishRidePanelRef = useRef(null)
     const location = useLocation()
-    const rideData = location.state?.ride
+    const [ rideData, setRideData ] = useState(location.state?.ride)
+    const finishRidePanelRef = useRef(null)
 
     const { socket } = useContext(SocketContext)
     const { captain } = useContext(CaptainDataContext)
 
+    const currentPassengers = rideData?.passengers?.length || 0
+    const passengerShare = rideData?.passengers?.[0]?.fare || rideData?.fare || 0
+    const totalRideFare = rideData?.passengers?.reduce((sum, p) => sum + (p.fare || 0), 0) || rideData?.fare || 0
+
     useEffect(() => {
-        socket.on('carpool-request', (data) => {
+        const handleCarpoolRequest = (data) => {
             console.log('CaptainRiding: Received carpool request:', data)
             setCarpoolNotification(data)
-        })
+        }
 
-        socket.on('passenger-accepted', (data) => {
+        const handlePassengerAccepted = (data) => {
             console.log('CaptainRiding: Passenger accepted:', data)
-            // Update ride data with new passenger
-            // You might want to refresh the ride data here
-        })
+            const updatedRide = data?.ride || data
+            if (updatedRide) {
+                setRideData(updatedRide)
+                setCarpoolNotification(null)
+                alert(`Passenger ${data.newPassenger?.user?.fullname?.firstname || 'new passenger'} accepted! Fare per passenger: ₹${data.farePerPassenger || passengerShare}`)
+            }
+        }
+
+        socket.on('carpool-request', handleCarpoolRequest)
+        socket.on('passenger-accepted', handlePassengerAccepted)
 
         return () => {
-            socket.off('carpool-request')
-            socket.off('passenger-accepted')
+            socket.off('carpool-request', handleCarpoolRequest)
+            socket.off('passenger-accepted', handlePassengerAccepted)
         }
-    }, [socket])
+    }, [socket, passengerShare])
 
     const acceptCarpoolRequest = async (passengerId) => {
         try {
@@ -50,7 +61,7 @@ const CaptainRiding = () => {
 
             console.log('Carpool request accepted:', response.data)
             setCarpoolNotification(null)
-            // Update ride data if needed
+            setRideData(response.data)
         } catch (error) {
             console.error('Error accepting carpool request:', error)
         }
@@ -80,7 +91,8 @@ const CaptainRiding = () => {
                     <h3 className='font-semibold'>New Passenger Request!</h3>
                     <p className='text-sm'>Passenger: {carpoolNotification.passengerName}</p>
                     <p className='text-sm'>Route: {carpoolNotification.pickup} → {carpoolNotification.destination}</p>
-                    <p className='text-sm'>Fare: ₹{carpoolNotification.fare}</p>
+                    <p className='text-sm'>Current passengers: {carpoolNotification.currentPassengers}</p>
+                    <p className='text-sm'>Fare after acceptance: ₹{carpoolNotification.fareAfterAcceptance} per passenger</p>
                     <div className='mt-2 flex gap-2'>
                         <button
                             onClick={() => acceptCarpoolRequest(carpoolNotification.passengerId)}
@@ -110,15 +122,17 @@ const CaptainRiding = () => {
                     setFinishRidePanel(true)
                 }}
             >
-                <h5 className='p-1 text-center w-[90%] absolute top-0' onClick={() => {
-
-                }}><i className="text-3xl text-gray-800 ri-arrow-up-wide-line"></i></h5>
+                <h5 className='p-1 text-center w-[90%] absolute top-0'><i className="text-3xl text-gray-800 ri-arrow-up-wide-line"></i></h5>
                 <div className='flex-1'>
                     <h4 className='text-xl font-semibold'>{'4 KM away'}</h4>
+                    <div className='mt-2'>
+                        <p className='text-sm text-gray-800'>Passengers: {currentPassengers}</p>
+                        <p className='text-sm font-semibold'>₹{passengerShare} per passenger</p>
+                        <p className='text-sm text-gray-800'>Total ride value: ₹{totalRideFare}</p>
+                    </div>
                     {rideData?.passengers?.length > 1 && (
-                        <div className='mt-2'>
-                            <p className='text-sm font-medium'>Carpool Passengers: {rideData.passengers.length}</p>
-                            <div className='flex flex-wrap gap-2 mt-1'>
+                        <div className='mt-3'>
+                            <div className='flex flex-wrap gap-2'>
                                 {rideData.passengers.map((passenger, index) => (
                                     <div key={index} className='bg-white bg-opacity-20 rounded px-2 py-1 text-xs'>
                                         {passenger.user.fullname.firstname} - ₹{passenger.fare}
