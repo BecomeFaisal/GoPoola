@@ -2,18 +2,8 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "outputDirectory": "dist",
-  "routes": [
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*\\.[a-z]{2,})",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  "env": {
+    "VITE_BASE_URL": "@vite_base_url",
+    "VITE_GOOGLE_MAPS_API_KEY": "@vite_google_maps_api_key"
+  }
 }
