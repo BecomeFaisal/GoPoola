@@ -16,18 +16,34 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'https://go-poola.vercel.app',
-    'https://go-poola-p5y8fnc79-becomefaisals-projects.vercel.app'
+    'https://go-poola-p5y8fnc79-becomefaisals-projects.vercel.app',
+    'https://go-poola-pnuw07bhv-becomefaisals-projects.vercel.app',
+    /\.vercel\.app$/
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Check if origin is in allowed list
+        if (allowedOrigins.some(allowed => {
+            if (typeof allowed === 'string') {
+                return allowed === origin;
+            } else if (allowed instanceof RegExp) {
+                return allowed.test(origin);
+            }
+            return false;
+        })) {
+            return callback(null, true);
         }
+
+        // Reject the request
+        return callback(new Error('Not allowed by CORS'));
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
