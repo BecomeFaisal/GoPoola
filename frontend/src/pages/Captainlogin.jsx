@@ -75,7 +75,7 @@ const Captainlogin = () => {
   return (
     <div className='p-7 h-screen flex flex-col justify-between'>
       <div>
-        <img className='w-32 mb-3' src="/Logo - Dark.png" alt="GoPoola Logo" />
+        <img className='w-32 mb-3' src="/LogoDark.png" alt="GoPoola Logo" />
 
         <form onSubmit={(e) => {
           submitHandler(e)
