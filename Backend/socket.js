@@ -4,14 +4,30 @@ const captainModel = require('./models/captain.model');
 
 let io;
 
+const allowedSocketOrigins = [
+    'https://go-poola.vercel.app',
+    'https://go-poola-p5y8fnc79-becomefaisals-projects.vercel.app',
+    'https://go-poola-pnuw07bhv-becomefaisals-projects.vercel.app',
+    /.+\.vercel\.app$/
+];
+
+function originAllowed(origin) {
+    if (!origin) return true;
+    return allowedSocketOrigins.some(allowed => {
+        if (typeof allowed === 'string') {
+            return allowed === origin;
+        }
+        if (allowed instanceof RegExp) {
+            return allowed.test(origin);
+        }
+        return false;
+    });
+}
+
 function initializeSocket(server) {
     io = socketIo(server, {
         cors: {
-            origin: [
-                'https://go-poola.vercel.app',
-                'https://go-poola-p5y8fnc79-becomefaisals-projects.vercel.app',
-                'https://go-poola-pnuw07bhv-becomefaisals-projects.vercel.app'
-            ],
+            origin: originAllowed,
             methods: [ 'GET', 'POST' ],
             credentials: true
         },

@@ -17,13 +17,22 @@ const allowedOrigins = [
     'http://localhost:5173',
     'https://go-poola.vercel.app',
     'https://go-poola-p5y8fnc79-becomefaisals-projects.vercel.app',
-    'https://go-poola-pnuw07bhv-becomefaisals-projects.vercel.app'
+    'https://go-poola-pnuw07bhv-becomefaisals-projects.vercel.app',
+    /.+\.vercel\.app$/
 ];
 
 const corsOptions = {
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        if (allowedOrigins.some(allowed => {
+            if (typeof allowed === 'string') {
+                return allowed === origin;
+            }
+            if (allowed instanceof RegExp) {
+                return allowed.test(origin);
+            }
+            return false;
+        })) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
