@@ -27,11 +27,20 @@ function originAllowed(origin) {
 function initializeSocket(server) {
     io = socketIo(server, {
         cors: {
-            origin: true,
+            origin: (origin, callback) => {
+                if (!origin) {
+                    return callback(null, true);
+                }
+                if (originAllowed(origin)) {
+                    return callback(null, true);
+                }
+                console.warn(`Socket.IO denied origin: ${origin}`);
+                return callback(new Error('Socket.IO origin denied'));
+            },
             methods: [ 'GET', 'POST' ],
             credentials: true
         },
-        transports: ['websocket', 'polling']
+        transports: ['websocket']
     });
 
     io.on('connection', (socket) => {

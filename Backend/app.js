@@ -21,22 +21,55 @@ const allowedOrigins = [
     /.+\.vercel\.app$/
 ];
 
+function isOriginAllowed(origin) {
+    if (!origin) return false;
+    return allowedOrigins.some(allowed => {
+        if (typeof allowed === 'string') {
+            return allowed === origin;
+        }
+        if (allowed instanceof RegExp) {
+            return allowed.test(origin);
+        }
+        return false;
+    });
+}
+
 const corsOptions = {
-    origin: true,
+    origin: (origin, callback) => {
+        if (!origin) {
+            return callback(null, true);
+        }
+        if (isOriginAllowed(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('CORS origin denied'));
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    preflightContinue: false,
     optionsSuccessStatus: 200
 };
+
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        console.log(`[CORS] Preflight ${req.method} ${req.originalUrl} origin=${req.headers.origin || 'none'}`);
+    }
+    if (req.path === '/users/register' && req.method === 'POST') {
+        console.log(`[REQUEST] ${req.method} ${req.originalUrl} origin=${req.headers.origin || 'none'}`);
+    }
+    next();
+});
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use((req, res, next) => {
-    const origin = req.headers.origin || '*';
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
+    const origin = req.headers.origin || '';
+    if (origin && isOriginAllowed(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
+    res.header('Vary', 'Origin');
     next();
 });
 app.use(express.json());
@@ -59,11 +92,11 @@ app.options('*', cors(corsOptions));
 
 // Error handler: always include CORS headers on error responses
 app.use((err, req, res, next) => {
-    const origin = req.headers.origin || '*';
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
+    const origin = req.headers.origin || '';
+    if (origin && isOriginAllowed(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
     res.header('Vary', 'Origin');
     console.error(err);
     if (res.headersSent) return next(err);
