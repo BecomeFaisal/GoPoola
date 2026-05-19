@@ -7,9 +7,15 @@ let io;
 function initializeSocket(server) {
     io = socketIo(server, {
         cors: {
-            origin: '*',
-            methods: [ 'GET', 'POST' ]
-        }
+            origin: [
+                'https://go-poola.vercel.app',
+                'https://go-poola-p5y8fnc79-becomefaisals-projects.vercel.app',
+                'https://go-poola-pnuw07bhv-becomefaisals-projects.vercel.app'
+            ],
+            methods: [ 'GET', 'POST' ],
+            credentials: true
+        },
+        transports: ['websocket', 'polling']
     });
 
     io.on('connection', (socket) => {
