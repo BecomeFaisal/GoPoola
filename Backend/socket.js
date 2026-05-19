@@ -27,7 +27,7 @@ function originAllowed(origin) {
 function initializeSocket(server) {
     io = socketIo(server, {
         cors: {
-            origin: originAllowed,
+            origin: true,
             methods: [ 'GET', 'POST' ],
             credentials: true
         },
